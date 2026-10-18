@@ -124,6 +124,19 @@ textarea.paste{width:100%;min-height:130px;background:var(--card);border:1px sol
 .wk .d{display:flex;gap:3px}
 .wk .d i{width:13px;height:13px;border-radius:4px;background:#2a3140;display:block}
 .wk .c{font-size:12px;color:var(--dim);font-weight:700;width:30px;text-align:right;font-variant-numeric:tabular-nums}
+.sTime{color:var(--dim2);font-size:12px;font-weight:500;margin-top:2px}
+.nums{display:flex;flex-wrap:wrap;gap:8px;margin:9px 0 0 40px}
+.nums.flat{margin:0;padding:11px 13px}
+.nums label{flex:1 1 130px;display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--dim);font-weight:600}
+.nums label.wide{flex-basis:100%}
+.nums input{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--txt);font-size:16px;-webkit-appearance:none;appearance:none;min-height:40px}
+.swRow{display:flex;align-items:center;gap:12px;padding:11px 13px}
+.swRow b{font-size:15px}.swRow small{display:block;color:var(--dim);font-size:12px;margin-top:2px;line-height:1.35}
+.sw{margin-left:auto;width:50px;height:30px;border-radius:999px;border:none;background:#39435a;position:relative;flex:0 0 auto;cursor:pointer;padding:0;transition:.2s}
+.sw i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:var(--ok)}.sw.on i{left:23px}
+.legend{display:flex;gap:14px;padding:0 10px 2px;font-size:11.5px;color:var(--dim)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
 </style>
 </head>
 <body>
@@ -139,8 +152,13 @@ textarea.paste{width:100%;min-height:130px;background:var(--card);border:1px sol
 <div class="toast" id="toast"></div>
 <script>
 "use strict";
-/* ---------------- structure ---------------- */
-var PARTS=[
+/* ---------------- config ---------------- */
+// New day-by-day checklists start on this date. Earlier days keep the old list exactly as logged.
+var EFFECTIVE="2026-10-19";
+var COLORS={A:"#f5b242",B:"#3ddc84",C:"#4a9eff",D:"#a878ff",E:"#8fa0b8",F:"#ff7eb3"};
+
+/* ---------------- old checklist (days before EFFECTIVE) ---------------- */
+var LEGACY=[
  {id:"A",tag:"Pre-dawn",color:"#f5b242",s:[
    {id:"A1",label:"Wake @ 4am"},
    {id:"A2",label:"Mobility"},
@@ -162,14 +180,118 @@ var PARTS=[
    {id:"E2",label:"R&W / Xtra time",o:["R&W","Xtra time"]},
    {id:"E3",label:"Shut off"}]}
 ];
-var ALL=[],SMAP={},PMAP={};
-PARTS.forEach(function(p){PMAP[p.id]=p;p.s.forEach(function(s){s.part=p.id;ALL.push(s);SMAP[s.id]=s;});});
+
+/* ---------------- new checklists (from EFFECTIVE) ---------------- */
+var TENNIS_O=["Drills","Points & patterns","Match play"];
+function P(id,tag,s){return{id:id,tag:tag,color:COLORS[id],s:s.filter(Boolean)};}
+function weekdayParts(w,court){
+  var train={1:["Mobility + core",["Mobility","Core","Activation"]],3:["Mobility + core",["Mobility","Core","Activation"]],5:["Mobility + core",["Mobility","Core","Activation"]],
+             2:["Strength A — legs & core"],4:["Strength B — shoulders, back & rotation"]}[w];
+  var ms={2:{label:"Walk"},4:{label:"Physio"}}[w]||{label:"Tennis",o:TENNIS_O,tennis:1};
+  var deep={1:"Deep work — billable matter work",2:"Deep work — counsel BD: pitch or follow-up to a firm",3:"Deep work — billable matter work",
+            4:"Deep work — court craft: record a 5-min argument",5:"Deep work — billing review (30 min) + roadmap exercise (60 min)"}[w];
+  return [
+    P("A","Pre-dawn",[
+      {id:"wake",label:"Wake @ 5:05 + pre-training snack",time:"5:05 · half banana + almonds"},
+      {id:"med1",label:"Meditation 1 (7 min)",time:"5:15–5:22"},
+      {id:"train",label:train[0],o:train[1],time:"5:25–6:20"}]),
+    P("B","Morning",[
+      {id:"avyaan",label:"Avyaan time",time:"6:30–7:30",o:["Bath & ready","Indoor cricket (10 min)","School drive"],ph:"What we talked about…"},
+      {id:"msess",label:ms.label,o:ms.o,tennis:ms.tennis,time:"7:30–8:30"},
+      {id:"bfast",label:"Breakfast + medication as prescribed",time:"8:30–9:15"}]),
+    P("C","Commute & counsel",[
+      {id:"car",label:"Car study (audio)",time:"9:15–10:15",ph:"3 lines learned…",book:1},
+      {id:"assign",label:"Assign juniors the day's work",time:"10:30"},
+      court?{id:"court",label:"Court hearing",time:"10:30–3:00"}:{id:"cb1",label:"Counsel block 1 — deep",time:"10:30–1:00"},
+      {id:"lunch",label:"Lunch + 10-min pad stroll",time:"1:00–1:30"},
+      court?null:{id:"cb2",label:"Counsel block 2",time:"1:30–3:00"}]),
+    P("D","Afternoon",[
+      {id:"admin",label:"Billing, BD & admin",time:"3:00–4:00",o:["Bills raised","Bills chased","Junior review","BD","Email"]},
+      court?{id:"pad",label:"Walking pad — 20 min",time:"4:00–4:30",o:["Pre-stretch","Walk 20 min","Post-stretch","Meditation 2"]}
+           :{id:"pad",label:"Walking pad block",time:"4:00–5:00",o:["Pre-stretch","Walk 30 min","Post-stretch","Meditation 2"]},
+      {id:"med2",label:"Meditation 2 (7 min)",time:"in the pad block"}]),
+    P("E","Evening",[
+      court?null:{id:"deep",label:deep,time:"5:15–6:45"},
+      {id:"dinner",label:"Dinner at office",time:"6:45–7:15"},
+      {id:"shut",label:"Tomorrow's to-dos + shutdown",time:"7:15–7:30"},
+      {id:"bill",label:"Billing numbers",time:"today's hours",num:[["my","My billable hrs"],["team","Team billable hrs"]]}]),
+    P("F","Night",[
+      {id:"carhome",label:"Screen-free car home",time:"7:30 · western classical"},
+      {id:"lights",label:"Lights out by 9:30",time:"target 9:15–9:30",timeIn:1}])
+  ];
+}
+function satParts(){
+  return [
+    P("A","Pre-dawn",[
+      {id:"wake",label:"Wake @ 5:45 + snack",time:"5:45"},
+      {id:"med1",label:"Meditation 1 (7 min)"}]),
+    P("B","Morning",[
+      {id:"nets",label:"Cricket nets",time:"6:30–9:00",o:["Glucose tablets packed"]},
+      {id:"avyaan",label:"Avyaan",o:["Reading","Cricket","Tennis","Unstructured fun"],ph:"What we did…"}]),
+    P("C","Midday",[
+      {id:"nap",label:"Nap 20–30 min"}]),
+    P("D","Afternoon",[
+      {id:"ride",label:"Long ride",time:"4:30–6:00",num:[["min","Minutes"]]}]),
+    P("E","Evening",[
+      {id:"med2",label:"Meditation 2 (7 min)"}]),
+    P("F","Night",[
+      {id:"lights",label:"Lights out by 9:30",timeIn:1}])
+  ];
+}
+function sunParts(){
+  return [
+    P("A","Pre-dawn",[
+      {id:"wake",label:"Wake @ 6:00 + snack",time:"6:00"},
+      {id:"med1",label:"Meditation 1 (7 min)"}]),
+    P("B","Morning",[
+      {id:"ltennis",label:"Long tennis — match play",time:"6:30–8:30",o:TENNIS_O,tennis:1,alwaysMatch:1},
+      {id:"avyaan",label:"Avyaan",o:["Tennis","Cricket","Watching sports","Unstructured fun"],ph:"What we did…"}]),
+    P("C","Midday",[
+      {id:"rest",label:"Full rest afternoon"}]),
+    P("D","Afternoon",[
+      {id:"review",label:"Weekly review",time:"6:00 pm · 15 min",link:"review"}]),
+    P("E","Evening",[
+      {id:"med2",label:"Meditation 2 (7 min)"}]),
+    P("F","Night",[
+      {id:"lights",label:"Lights out by 9:15",timeIn:1}])
+  ];
+}
+function index(parts){var items=[],map={};parts.forEach(function(p){p.s.forEach(function(s){s.part=p.id;items.push(s);map[s.id]=s;});});return{parts:parts,items:items,map:map};}
+var LEG=index(LEGACY),TMEMO={};
+function isNew(date){return date>=EFFECTIVE;}
+function dow(date){return parse(date).getDay();}
+function isWeekday(date){var w=dow(date);return w>=1&&w<=5;}
+function tpl(date){
+  if(!isNew(date))return LEG;
+  var w=dow(date),court=(w>=1&&w<=5)&&!!(S.days[date]&&S.days[date].court),key=w+"|"+(court?1:0);
+  if(!TMEMO[key])TMEMO[key]=index(w===6?satParts():w===0?sunParts():weekdayParts(w,court));
+  return TMEMO[key];
+}
+function partsFor(date){return tpl(date).parts;}
+function itemsFor(date){return tpl(date).items;}
+function findItem(date,id){return tpl(date).map[id]||null;}
+
+/* catalogue of every new item (for Log › By session) */
+var GEN={wake:"Wake + snack",train:"Morning training",msess:"Morning session (tennis / walk / physio)",avyaan:"Avyaan time",
+  deep:"Evening deep work",pad:"Walking pad block",lights:"Lights out",cb1:"Counsel block 1",cb2:"Counsel block 2"};
+var CAT=[],CATMAP={};
+(function(){
+  [1,2,3,4,5].forEach(function(w){[0,1].forEach(function(c){index(weekdayParts(w,c)).items.forEach(add);});});
+  index(satParts()).items.forEach(add);index(sunParts()).items.forEach(add);
+  function add(s){
+    if(!CATMAP[s.id]){var c={id:s.id,label:GEN[s.id]||s.label,o:s.o?s.o.slice():null,part:s.part};CATMAP[s.id]=c;CAT.push(c);}
+    else if(s.o){var e=CATMAP[s.id];e.o=e.o||[];s.o.forEach(function(o){if(e.o.indexOf(o)<0)e.o.push(o);});}
+  }
+})();
+function anyItem(id){return CATMAP[id]||LEG.map[id]||null;}
 
 /* ---------------- storage ---------------- */
 var KEY="daily_tracker_v1", MEM=null;
-function blank(){return{v:1,days:{},metrics:{},created:iso(new Date())};}
+function blank(){return{v:2,days:{},metrics:{},settings:{book:"",target:""},reviews:{},created:iso(new Date())};}
+function fix(d){d.days=d.days||{};d.metrics=d.metrics||{};d.settings=d.settings||{};d.reviews=d.reviews||{};
+  if(d.settings.book==null)d.settings.book="";if(d.settings.target==null)d.settings.target="";d.v=2;return d;}
 function load(){
-  try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);d.days=d.days||{};d.metrics=d.metrics||{};return d;}}
+  try{var r=localStorage.getItem(KEY);if(r)return fix(JSON.parse(r));}
   catch(e){}
   return blank();
 }
@@ -188,18 +310,19 @@ function pretty(s){var d=parse(s);return DAY[d.getDay()]+", "+d.getDate()+" "+MO
 function shortD(s){var d=parse(s);return d.getDate()+" "+MON[d.getMonth()];}
 function today(){return iso(new Date());}
 function mondayOf(s){var d=parse(s),k=(d.getDay()+6)%7;d.setDate(d.getDate()-k);return iso(d);}
+function daysBetween(a,b){return Math.round((parse(b)-parse(a))/86400000);}
 
 /* ---------------- day records ---------------- */
 function day(date,make){
   var d=S.days[date];
   if(!d){
     if(!make)return null;
-    d={sessions:{},misc:"",carry:{}};
+    d={sessions:{},misc:"",carry:{},court:0};
     var prev=S.days[shift(date,-1)];
     if(prev){
-      ALL.forEach(function(x){
-        var pr=prev.sessions[x.id];
-        if(pr&&pr.r) d.carry[x.id]=((prev.carry&&prev.carry[x.id])||0)+1;
+      Object.keys(prev.sessions||{}).forEach(function(id){
+        var pr=prev.sessions[id];
+        if(pr&&pr.r) d.carry[id]=((prev.carry&&prev.carry[id])||0)+1;
       });
     }
     S.days[date]=d;save();
@@ -215,34 +338,98 @@ function ses(date,id){
 function getS(date,id){var d=S.days[date];return(d&&d.sessions&&d.sessions[id])||null;}
 function optArr(o){if(!o)return[];if(Array.isArray(o))return o.slice();return[o];}
 function optStr(o,j){return optArr(o).join(j||" · ");}
+function num(v,k){return(v&&v.n&&v.n[k]!=null&&v.n[k]!=="")?+v.n[k]:null;}
 function dayPct(date){
-  var d=S.days[date];if(!d)return null;var n=0;
-  ALL.forEach(function(x){var v=d.sessions[x.id];if(v&&v.d)n++;});
-  return n/ALL.length;
+  var d=S.days[date];if(!d)return null;var it=itemsFor(date),n=0;
+  it.forEach(function(x){var v=d.sessions[x.id];if(v&&v.d)n++;});
+  return it.length?n/it.length:0;
 }
 function partPct(date,pid){
-  var d=S.days[date];if(!d)return 0;var p=PMAP[pid],n=0;
+  var d=S.days[date];if(!d)return 0;var p=null;
+  partsFor(date).forEach(function(q){if(q.id===pid)p=q;});
+  if(!p||!p.s.length)return 0;var n=0;
   p.s.forEach(function(x){var v=d.sessions[x.id];if(v&&v.d)n++;});
   return n/p.s.length;
 }
+function hasPart(date,pid){return partsFor(date).some(function(q){return q.id===pid;});}
+
+/* ---------------- core score ---------------- */
+function coreChecks(date){
+  if(!isNew(date))return null;
+  var w=dow(date);
+  if(w===6)return[["med1"],["med2"],["nets","ride"],["lights"]];
+  if(w===0)return[["med1"],["med2"],["ltennis"],["lights"]];
+  var court=!!(S.days[date]&&S.days[date].court);
+  return[["med1"],["med2"],["train","msess"]].concat(court?[["court"]]:[["cb1"],["cb2"]]).concat(["bill",["carhome"],["lights"]]);
+}
+function checkOk(date,c){
+  if(c==="bill")return num(getS(date,"bill"),"team")!==null;
+  return c.some(function(id){var v=getS(date,id);return !!(v&&v.d);});
+}
+function coreScore(date){
+  var cs=coreChecks(date);if(!cs)return null;var n=0;
+  cs.forEach(function(c){if(checkOk(date,c))n++;});
+  return{n:n,t:cs.length,p:n/cs.length};
+}
+function goodDay(date){if(!S.days[date])return false;var c=coreScore(date);return !!(c&&c.p>=0.75);}
+function goodStreak(){
+  var t=today(),k=goodDay(t)?t:shift(t,-1),c=0;
+  while(k>=EFFECTIVE&&goodDay(k)){c++;k=shift(k,-1);}
+  return c;
+}
+
+/* ---------------- streaks (skip days an item isn't scheduled) ---------------- */
+function scheduled(date,id){return !!findItem(date,id);}
 function streak(id){
-  var c=0,t=today();
-  var cur=getS(t,id);
-  var start=(cur&&cur.d)?t:shift(t,-1);
-  var k=start;
-  while(true){var v=getS(k,id);if(v&&v.d){c++;k=shift(k,-1);}else break;}
+  var t=today(),c=0,k=t,cur=getS(t,id),legacy=!!LEG.map[id];
+  if(!(cur&&cur.d))k=shift(t,-1);
+  for(var g=0;g<500;g++){
+    if(!scheduled(k,id)){if(!legacy&&k<EFFECTIVE)break;k=shift(k,-1);continue;}
+    var v=getS(k,id);if(v&&v.d){c++;k=shift(k,-1);}else break;
+  }
   return c;
 }
 function bestStreak(id){
-  var ks=Object.keys(S.days).sort(),best=0,run=0,prev=null;
-  ks.forEach(function(k){
-    var v=S.days[k].sessions[id];
-    if(v&&v.d){run=(prev&&shift(prev,1)===k)?run+1:1;prev=k;if(run>best)best=run;}
-    else prev=null;
-  });
+  var ks=Object.keys(S.days).sort();if(!ks.length)return 0;
+  var k=ks[0],t=today(),best=0,run=0;
+  for(var g=0;g<2000&&k<=t;g++){
+    if(scheduled(k,id)){var v=getS(k,id);if(v&&v.d){run++;if(run>best)best=run;}else if(k<t)run=0;}
+    k=shift(k,1);
+  }
   return best;
 }
 function daysBack(n){var a=[],t=today();for(var i=n-1;i>=0;i--)a.push(shift(t,-i));return a;}
+
+/* ---------------- weekly aggregates ---------------- */
+var TRAIN_IDS=["train","msess","nets","ride","ltennis"];
+function weekStats(ws){
+  var r={my:0,team:0,hasMy:0,hasTeam:0,coreSum:0,coreN:0,good:0,lightsDone:0,lightsN:0,tennis:0,med:0,medN:0,train:0,w:0,l:0,matches:[],newDays:0,types:{}};
+  TENNIS_O.forEach(function(o){r.types[o]=0;});
+  for(var i=0;i<7;i++){
+    var k=shift(ws,i);if(k>today())continue;
+    var d=S.days[k];if(!d||!isNew(k))continue;
+    r.newDays++;
+    var b=getS(k,"bill"),my=num(b,"my"),tm=num(b,"team");
+    if(my!==null){r.my+=my;r.hasMy=1;} if(tm!==null){r.team+=tm;r.hasTeam=1;}
+    var c=coreScore(k);r.coreSum+=c.p;r.coreN++;if(c.p>=.75)r.good++;
+    if(scheduled(k,"lights")){r.lightsN++;var l=getS(k,"lights");if(l&&l.d)r.lightsDone++;}
+    ["med1","med2"].forEach(function(id){if(scheduled(k,id)){r.medN++;var v=getS(k,id);if(v&&v.d)r.med++;}});
+    TRAIN_IDS.forEach(function(id){if(scheduled(k,id)){var v=getS(k,id);if(v&&v.d)r.train++;}});
+    ["msess","ltennis"].forEach(function(id){
+      var it=findItem(k,id);if(!it||!it.tennis)return;var v=getS(k,id);if(!v)return;
+      if(v.d){r.tennis++;optArr(v.o).forEach(function(o){if(r.types[o]!=null)r.types[o]++;});}
+      if(v.m&&(v.m.wl==="W"||v.m.wl==="L")){if(v.m.wl==="W")r.w++;else r.l++;r.matches.push([k,v.m]);}
+    });
+  }
+  return r;
+}
+function weeks(n){var m=mondayOf(today()),a=[];for(var i=n-1;i>=0;i--)a.push(shift(m,-7*i));return a;}
+function share(my,team){return(my+team)>0?Math.round(team/(my+team)*100)+"%":"—";}
+function allMatches(){
+  var a=[];Object.keys(S.days).sort().forEach(function(k){
+    ["msess","ltennis"].forEach(function(id){var v=getS(k,id);if(v&&v.m&&(v.m.wl||v.m.opp||v.m.score))a.push([k,v.m]);});
+  });return a;
+}
 
 /* ---------------- ui helpers ---------------- */
 var V=document.getElementById("view"),TT=document.getElementById("toast");
@@ -259,28 +446,48 @@ function shade(p){
   return "#3ddc84";
 }
 var CHK='<svg viewBox="0 0 24 24" fill="none" stroke="#08210f" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>';
+function extra(v){
+  if(!v)return "";var a=[];
+  if(v.n){if(num(v,"my")!==null)a.push("me "+num(v,"my")+"h");if(num(v,"team")!==null)a.push("team "+num(v,"team")+"h");if(num(v,"min")!==null)a.push(num(v,"min")+" min");}
+  if(v.t)a.push("lights out "+v.t);
+  if(v.b)a.push("book: "+v.b);
+  if(v.m&&(v.m.opp||v.m.score||v.m.wl))a.push("match"+(v.m.opp?" vs "+v.m.opp:"")+(v.m.score?" "+v.m.score:"")+(v.m.wl?" ("+v.m.wl+")":""));
+  return a.join(" · ");
+}
 
 /* ---------------- TODAY ---------------- */
 var curDate=today();
+function hdrRight(){
+  var it=itemsFor(curDate),p=dayPct(curDate)||0,c=coreScore(curDate);
+  document.getElementById("hRight").innerHTML='<div style="text-align:right"><div style="font-size:20px;font-weight:800;letter-spacing:-.5px">'+Math.round(p*100)+'%</div>'+
+    '<div style="font-size:11px;color:var(--dim)">'+Math.round(p*it.length)+' / '+it.length+'</div>'+
+    (c?'<div style="font-size:11px;font-weight:800;margin-top:1px;color:'+(c.p>=.75?"var(--ok)":"var(--warn)")+'">Core '+c.n+' / '+c.t+'</div>':'')+'</div>';
+}
 function vToday(){
   document.getElementById("hTitle").textContent = curDate===today()?"Today":shortD(curDate);
   document.getElementById("hSub").textContent = pretty(curDate);
-  var p=dayPct(curDate)||0;
-  document.getElementById("hRight").innerHTML='<div style="text-align:right"><div style="font-size:20px;font-weight:800;letter-spacing:-.5px">'+Math.round(p*100)+'%</div><div style="font-size:11px;color:var(--dim)">'+Math.round(p*ALL.length)+' / '+ALL.length+'</div></div>';
-  var h='<div class="dateBar"><button id="pd">‹</button><div class="lbl">'+shortD(curDate)+'<small>'+DAY[parse(curDate).getDay()]+(curDate===today()?" · today":"")+'</small></div><button id="nd">›</button></div>';
   var d=day(curDate,true);
-  PARTS.forEach(function(pt){
+  hdrRight();
+  var h='<div class="dateBar"><button id="pd">‹</button><div class="lbl">'+shortD(curDate)+'<small>'+DAY[parse(curDate).getDay()]+(curDate===today()?" · today":"")+'</small></div><button id="nd">›</button></div>';
+  if(isNew(curDate)){
+    if(isWeekday(curDate))
+      h+='<div class="card swRow"><div><b>Court day</b><small>Hearing replaces the two counsel blocks; deep work drops for the day</small></div>'+
+         '<button class="sw'+(d.court?" on":"")+'" data-act="court" aria-label="Court day"><i></i></button></div>';
+    h+='<div class="hint" style="padding-top:0">Good-day streak: <b style="color:var(--ok)">'+goodStreak()+'</b> · a good day = Core 75%+</div>';
+  }
+  partsFor(curDate).forEach(function(pt){
     var pp=partPct(curDate,pt.id);
     h+='<div class="card"><div class="partHead"><span class="dot" style="background:'+pt.color+'"></span>'+
        '<span class="nm">Part '+pt.id+'</span><span class="tag">'+pt.tag+'</span>'+
        '<span class="pct">'+Math.round(pp*100)+'%</span><span class="mini"><i style="width:'+(pp*100)+'%;background:'+pt.color+'"></i></span></div>';
-    pt.s.forEach(function(x){
+    pt.s.forEach(function(x,i){
       var v=d.sessions[x.id]||{d:0,r:0,w:"",o:""};
       var car=d.carry[x.id]||0;
       h+='<div class="sess" data-s="'+x.id+'">'+
         '<div class="sTop">'+
           '<button class="tick'+(v.d?" on":"")+'" data-act="done" data-s="'+x.id+'">'+CHK+'</button>'+
-          '<div style="flex:1;min-width:0"><div class="sName'+(v.d?" done":"")+'"><span class="sId">'+x.id.charAt(0)+"."+x.id.slice(1)+'</span>'+esc(x.label)+'</div></div>'+
+          '<div style="flex:1;min-width:0"><div class="sName'+(v.d?" done":"")+'"><span class="sId">'+pt.id+"."+(i+1)+'</span>'+esc(x.label)+'</div>'+
+          (x.time?'<div class="sTime">'+esc(x.time)+'</div>':'')+'</div>'+
           '<button class="rollBtn'+(v.r?" on":"")+'" data-act="roll" data-s="'+x.id+'">↻ Rolled</button>'+
         '</div>';
       if(car)h+='<div class="carry">↻ carried over '+car+' day'+(car>1?"s":"")+'</div>';
@@ -290,13 +497,30 @@ function vToday(){
         x.o.forEach(function(o){h+='<button class="chip'+(sel.indexOf(o)>=0?" on":"")+'" data-act="opt" data-s="'+x.id+'" data-o="'+esc(o)+'">'+esc(o)+'</button>';});
         h+='</div>';
       }
-      h+='<div class="work"><textarea rows="1" placeholder="Work done…" data-act="work" data-s="'+x.id+'">'+esc(v.w)+'</textarea></div>';
+      if(x.num){
+        h+='<div class="nums">';
+        x.num.forEach(function(f){var val=num(v,f[0]);
+          h+='<label><span>'+esc(f[1])+'</span><input type="number" inputmode="decimal" step="0.25" min="0" data-in="num" data-s="'+x.id+'" data-k="'+f[0]+'" value="'+(val===null?"":val)+'" placeholder="0"></label>';});
+        h+='</div>';
+      }
+      if(x.timeIn)h+='<div class="nums"><label><span>Lights out at</span><input type="time" data-in="tin" data-s="'+x.id+'" value="'+esc(v.t||"")+'"></label></div>';
+      if(x.book)h+='<div class="nums"><label class="wide"><span>Current book</span><input type="text" data-in="book" data-s="'+x.id+'" value="'+esc(S.settings.book)+'" placeholder="e.g. Thinking in Bets"></label></div>';
+      if(x.tennis&&(x.alwaysMatch||optArr(v.o).indexOf("Match play")>=0)){
+        var m=v.m||{};
+        h+='<div class="nums"><label><span>Opponent</span><input type="text" data-in="mopp" data-s="'+x.id+'" value="'+esc(m.opp||"")+'"></label>'+
+           '<label><span>Score</span><input type="text" data-in="mscore" data-s="'+x.id+'" value="'+esc(m.score||"")+'" placeholder="6-4 3-6 10-7"></label></div>'+
+           '<div class="opts"><button class="chip'+(m.wl==="W"?" on":"")+'" data-act="wl" data-s="'+x.id+'" data-w="W">Won</button>'+
+           '<button class="chip'+(m.wl==="L"?" on":"")+'" data-act="wl" data-s="'+x.id+'" data-w="L">Lost</button></div>';
+      }
+      if(x.link==="review")h+='<div class="opts"><button class="chip" data-act="goreview">Open weekly review →</button></div>';
+      h+='<div class="work"><textarea rows="1" placeholder="'+esc(x.ph||"Work done…")+'" data-act="work" data-s="'+x.id+'">'+esc(v.w)+'</textarea></div>';
       h+='</div>';
     });
     h+='</div>';
   });
   h+='<h2 class="sec">Miscellaneous</h2><div class="misc"><textarea id="misc" placeholder="Anything else about today — notes, ideas, expenses, people, follow-ups…">'+esc(d.misc)+'</textarea></div>';
-  h+='<div class="hint">Tick the box when a session is done. Tap <b>↻ Rolled</b> if it did not happen and needs to carry to tomorrow — it will show up on the next day with a carry count, and appears under Log › Rolled over.</div>';
+  h+='<div class="hint">Tick the box when a session is done. Tap <b>↻ Rolled</b> if it did not happen and needs to carry to tomorrow — it will show up on the next day with a carry count, and appears under Log › Rolled over.'+
+     (isNew(curDate)?' <b>Core</b> counts only the anchors: both meditations, training, the counsel blocks (or court), team hours entered, screen-free car and lights out.':'')+'</div>';
   V.innerHTML=h;
   document.getElementById("pd").onclick=function(){curDate=shift(curDate,-1);render();};
   document.getElementById("nd").onclick=function(){if(curDate<today()){curDate=shift(curDate,1);render();}else toast("That's the future");};
@@ -304,22 +528,46 @@ function vToday(){
     grow(t);
     t.addEventListener("input",function(){grow(t);var v=ses(curDate,t.dataset.s);v.w=t.value;save();});
   });
+  V.querySelectorAll("input[data-in]").forEach(function(t){
+    t.addEventListener("input",function(){
+      var v=ses(curDate,t.dataset.s),a=t.dataset.in;
+      if(a==="num"){v.n=v.n||{};v.n[t.dataset.k]=t.value===""?null:+t.value;
+        if(t.dataset.k==="team"&&t.value!==""&&!v.d){v.d=1;v.r=0;var tk=V.querySelector('button[data-act=done][data-s="'+t.dataset.s+'"]');if(tk)tk.classList.add("on");}}
+      else if(a==="tin")v.t=t.value;
+      else if(a==="book"){S.settings.book=t.value;v.b=t.value;}
+      else if(a==="mopp"){v.m=v.m||{};v.m.opp=t.value;}
+      else if(a==="mscore"){v.m=v.m||{};v.m.score=t.value;}
+      save();hdrRight();
+    });
+  });
   var m=document.getElementById("misc");
   m.addEventListener("input",function(){day(curDate,true).misc=m.value;save();});
 }
 function grow(t){t.style.height="auto";t.style.height=Math.max(38,t.scrollHeight)+"px";}
+function sortOpts(id,arr){var it=findItem(curDate,id),order=(it&&it.o)||[];arr.sort(function(p,q){return order.indexOf(p)-order.indexOf(q);});return arr;}
 V.addEventListener("click",function(e){
   var b=e.target.closest("button[data-act]");if(!b||view!=="today")return;
-  var v=ses(curDate,b.dataset.s),a=b.dataset.act;
-  if(a==="done"){v.d=v.d?0:1;if(v.d)v.r=0;}
+  var a=b.dataset.act;
+  if(a==="court"){var dd=day(curDate,true);dd.court=dd.court?0:1;save();vToday();return;}
+  if(a==="goreview"){var rb=document.querySelector('.nav button[data-v="review"]');if(rb)rb.click();return;}
+  var v=ses(curDate,b.dataset.s);
+  if(a==="done"){
+    v.d=v.d?0:1;if(v.d)v.r=0;
+    if(b.dataset.s==="med2"&&findItem(curDate,"pad")){   // keep the pad block's "Meditation 2" chip in step
+      var pv=ses(curDate,"pad"),arr=optArr(pv.o),i=arr.indexOf("Meditation 2");
+      if(v.d&&i<0)arr.push("Meditation 2");if(!v.d&&i>=0)arr.splice(i,1);pv.o=sortOpts("pad",arr);
+    }
+  }
   else if(a==="roll"){v.r=v.r?0:1;if(v.r)v.d=0;}
   else if(a==="opt"){
-    var cur=optArr(v.o),pick=b.dataset.o,i=cur.indexOf(pick);
-    if(i>=0)cur.splice(i,1);else cur.push(pick);
-    var order=(SMAP[b.dataset.s]||{}).o||[];
-    cur.sort(function(p,q){return order.indexOf(p)-order.indexOf(q);});
-    v.o=cur;
+    var cur=optArr(v.o),pick=b.dataset.o,j=cur.indexOf(pick);
+    if(j>=0)cur.splice(j,1);else cur.push(pick);
+    v.o=sortOpts(b.dataset.s,cur);
+    if(b.dataset.s==="pad"&&pick==="Meditation 2"&&findItem(curDate,"med2")){
+      var mv=ses(curDate,"med2");mv.d=cur.indexOf("Meditation 2")>=0?1:0;if(mv.d)mv.r=0;
+    }
   }
+  else if(a==="wl"){v.m=v.m||{};v.m.wl=v.m.wl===b.dataset.w?"":b.dataset.w;}
   save();vToday();
 });
 
@@ -337,23 +585,26 @@ function vLog(){
     var ks=Object.keys(S.days).sort().reverse(),any=0;
     ks.forEach(function(k){
       var d=S.days[k],hit=[];
-      ALL.forEach(function(x){
+      itemsFor(k).forEach(function(x){
         var v=d.sessions[x.id];if(!v)return;
-        if(!v.d&&!v.r&&!v.w&&!v.o)return;
+        var ex=extra(v);
+        if(!v.d&&!v.r&&!v.w&&!optArr(v.o).length&&!ex)return;
         if(logQ){
-          var t=(x.label+" "+x.id+" "+(v.w||"")+" "+(v.o||"")+" "+k+" "+shortD(k)).toLowerCase();
+          var t=(x.label+" "+x.id+" "+(v.w||"")+" "+optStr(v.o)+" "+ex+" "+k+" "+shortD(k)).toLowerCase();
           if(t.indexOf(logQ.toLowerCase())<0)return;
         }
-        hit.push([x,v]);
+        hit.push([x,v,ex]);
       });
       var mm=(!logQ||(d.misc||"").toLowerCase().indexOf(logQ.toLowerCase())>=0)?d.misc:"";
       if(!hit.length&&!mm)return;
-      any=1;var p=dayPct(k)||0,op=logOpen[k]!==false;
-      h+='<div class="logDay"><div class="h" data-open="'+k+'"><span>'+shortD(k)+' · '+DAY[parse(k).getDay()].slice(0,3)+'</span><span class="p">'+Math.round(p*100)+'% · '+(op?"▾":"▸")+'</span></div>';
+      any=1;var p=dayPct(k)||0,op=logOpen[k]!==false,c=coreScore(k);
+      h+='<div class="logDay"><div class="h" data-open="'+k+'"><span>'+shortD(k)+' · '+DAY[parse(k).getDay()].slice(0,3)+(d.court?' · <span style="color:var(--warn)">court</span>':'')+'</span><span class="p">'+
+         (c?'Core '+c.n+'/'+c.t+' · ':'')+Math.round(p*100)+'% · '+(op?"▾":"▸")+'</span></div>';
       if(op){
         hit.forEach(function(a){
-          var x=a[0],v=a[1];
-          h+='<div class="logRow"><span class="badge '+(v.d?"b-ok":v.r?"b-roll":"b-no")+'">'+(v.d?"DONE":v.r?"ROLL":"—")+'</span><div class="t">'+esc(x.id)+' '+esc(x.label)+(optArr(v.o).length?' <b style="color:var(--acc)">· '+esc(optStr(v.o))+'</b>':'')+(v.w?'<small>'+esc(v.w)+'</small>':'')+'</div></div>';
+          var x=a[0],v=a[1],ex=a[2];
+          h+='<div class="logRow"><span class="badge '+(v.d?"b-ok":v.r?"b-roll":"b-no")+'">'+(v.d?"DONE":v.r?"ROLL":"—")+'</span><div class="t">'+esc(x.label)+(optArr(v.o).length?' <b style="color:var(--acc)">· '+esc(optStr(v.o))+'</b>':'')+
+             (ex?'<small style="color:var(--txt)">'+esc(ex)+'</small>':'')+(v.w?'<small>'+esc(v.w)+'</small>':'')+'</div></div>';
         });
         if(mm)h+='<div class="logRow"><span class="badge b-no">NOTE</span><div class="t"><small>'+esc(mm)+'</small></div></div>';
       }
@@ -363,13 +614,15 @@ function vLog(){
   }
   else if(logMode==="sess"){
     h+='<select class="sel" id="ss"><option value="">— pick a session —</option>'+
-      PARTS.map(function(p){return '<optgroup label="Part '+p.id+' · '+p.tag+'">'+p.s.map(function(x){
+      '<optgroup label="Current checklist">'+CAT.map(function(x){return '<option value="'+x.id+'"'+(logQ===x.id?" selected":"")+'>'+esc(x.label)+'</option>';}).join("")+'</optgroup>'+
+      LEGACY.map(function(p){return '<optgroup label="Old list (before 19 Oct) · Part '+p.id+'">'+p.s.map(function(x){
         return '<option value="'+x.id+'"'+(logQ===x.id?" selected":"")+'>'+x.id+' — '+esc(x.label)+'</option>';}).join("")+'</optgroup>';}).join("")+'</select>';
-    if(logQ&&SMAP[logQ]){
-      var x=SMAP[logQ],rows=[],dn=0,rl=0;
+    var x=logQ?anyItem(logQ):null;
+    if(x){
+      var rows=[],dn=0,rl=0;
       Object.keys(S.days).sort().reverse().forEach(function(k){
         var v=S.days[k].sessions[logQ];if(!v)return;
-        if(!v.d&&!v.r&&!v.w)return;
+        if(!v.d&&!v.r&&!v.w&&!extra(v))return;
         if(v.d)dn++;if(v.r)rl++;
         rows.push([k,v]);
       });
@@ -389,8 +642,9 @@ function vLog(){
       h+='<div class="logDay"><div class="h"><span>'+esc(x.label)+'</span><span class="p">'+rows.length+' entries</span></div>';
       if(!rows.length)h+='<div class="logRow"><div class="t"><small>No entries yet.</small></div></div>';
       rows.forEach(function(a){
-        var k=a[0],v=a[1];
-        h+='<div class="logRow"><span class="badge '+(v.d?"b-ok":v.r?"b-roll":"b-no")+'">'+shortD(k)+'</span><div class="t">'+(optArr(v.o).length?'<b style="color:var(--acc)">'+esc(optStr(v.o))+'</b>':(v.d?"Done":v.r?"Rolled over":"—"))+(v.w?'<small>'+esc(v.w)+'</small>':'')+'</div></div>';
+        var k=a[0],v=a[1],ex=extra(v);
+        h+='<div class="logRow"><span class="badge '+(v.d?"b-ok":v.r?"b-roll":"b-no")+'">'+shortD(k)+'</span><div class="t">'+(optArr(v.o).length?'<b style="color:var(--acc)">'+esc(optStr(v.o))+'</b>':(v.d?"Done":v.r?"Rolled over":"—"))+
+           (ex?'<small style="color:var(--txt)">'+esc(ex)+'</small>':'')+(v.w?'<small>'+esc(v.w)+'</small>':'')+'</div></div>';
       });
       h+='</div>';
     } else h+='<div class="empty">Pick a session to see every day it was done, what you did, and where it rolled over.</div>';
@@ -399,12 +653,12 @@ function vLog(){
     var n=0;h+='<div class="hint">Every session you marked ↻ rolled over, newest first.</div>';
     Object.keys(S.days).sort().reverse().forEach(function(k){
       var d=S.days[k],rows=[];
-      ALL.forEach(function(x){var v=d.sessions[x.id];if(v&&v.r)rows.push([x,v]);});
+      itemsFor(k).forEach(function(x){var v=d.sessions[x.id];if(v&&v.r)rows.push([x,v]);});
       if(!rows.length)return;n++;
       h+='<div class="logDay"><div class="h"><span>'+shortD(k)+' · '+DAY[parse(k).getDay()].slice(0,3)+'</span><span class="p">'+rows.length+' rolled</span></div>';
       rows.forEach(function(a){
         var x=a[0],v=a[1],c=d.carry[x.id]||0;
-        h+='<div class="logRow"><span class="badge b-roll">'+x.id+'</span><div class="t">'+esc(x.label)+(c?' <b style="color:var(--roll)">· '+c+'d carry</b>':'')+(v.w?'<small>'+esc(v.w)+'</small>':'')+'</div></div>';
+        h+='<div class="logRow"><span class="badge b-roll">'+x.part+'</span><div class="t">'+esc(x.label)+(c?' <b style="color:var(--roll)">· '+c+'d carry</b>':'')+(v.w?'<small>'+esc(v.w)+'</small>':'')+'</div></div>';
       });
       h+='</div>';
     });
@@ -474,28 +728,63 @@ function bars(vals,color){
   });
   return s+'</svg></div>';
 }
+function pairBars(vals,ca,cb){ // vals: [[label,a,b]] with a/b null when no data
+  var mx=1;vals.forEach(function(p){if(p[1]!=null&&p[1]>mx)mx=p[1];if(p[2]!=null&&p[2]>mx)mx=p[2];});
+  var W=320,H=90,n=vals.length,gw=(W-2)/n,bw=(gw-3)/2;
+  var s='<div class="chart"><svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:96px;display:block">';
+  vals.forEach(function(p,i){
+    [[p[1],ca,0],[p[2],cb,1]].forEach(function(q){
+      var h=q[0]==null?2:Math.max(2,q[0]/mx*(H-6));
+      s+='<rect x="'+(i*gw+1+q[2]*(bw+1)).toFixed(1)+'" y="'+(H-h).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1.4" fill="'+(q[0]==null?"#252b39":q[1])+'"/>';
+    });
+  });
+  return s+'</svg></div>';
+}
+function wkCap(ws,mid){return '<div style="display:flex;justify-content:space-between;color:var(--dim2);font-size:11px;padding:2px 8px 10px"><span>wk of '+shortD(ws[0])+'</span><span>'+mid+'</span><span>this week</span></div>';}
 function vTrends(){
   document.getElementById("hTitle").textContent="Trends";
-  document.getElementById("hSub").textContent="Streaks, consistency and body data";
+  document.getElementById("hSub").textContent="Billing, consistency and body data";
   document.getElementById("hRight").innerHTML="";
   var d30=daysBack(30),d90=daysBack(90);
   var rec=d30.filter(function(k){return S.days[k];});
   var avg30=rec.length?rec.reduce(function(a,k){return a+dayPct(k);},0)/rec.length:0;
   var d7=daysBack(7),rec7=d7.filter(function(k){return S.days[k];});
   var avg7=rec7.length?rec7.reduce(function(a,k){return a+dayPct(k);},0)/rec7.length:0;
-  var perfect=Object.keys(S.days).filter(function(k){return dayPct(k)===1;}).length;
+  var good=Object.keys(S.days).filter(function(k){return goodDay(k);}).length;
   var h='<div class="stats">'+
     '<div class="stat"><b style="color:var(--ok)">'+Math.round(avg7*100)+'%</b><span>last 7 days</span></div>'+
     '<div class="stat"><b>'+Math.round(avg30*100)+'%</b><span>last 30 days</span></div>'+
-    '<div class="stat"><b style="color:var(--warn)">'+perfect+'</b><span>perfect days</span></div></div>';
+    '<div class="stat"><b style="color:var(--warn)">'+goodStreak()+'</b><span>good-day streak<br>('+good+' good days)</span></div></div>';
+
+  /* 12-week charts */
+  var ws=weeks(12),st=ws.map(weekStats),cur=st[st.length-1];
+  var tMy=0,tTeam=0;st.forEach(function(r){tMy+=r.my;tTeam+=r.team;});
+  h+='<h2 class="sec">Billable hours · 12 weeks</h2><div class="card">'+
+     '<div class="mrow"><span>This week — me / team</span><b>'+fmt(cur.my)+' / '+fmt(cur.team)+' h</b></div>'+
+     '<div class="mrow"><span>Team share this week</span><b style="color:var(--ok)">'+share(cur.my,cur.team)+'</b></div>'+
+     '<div class="mrow"><span>Team share · 12 weeks</span><b>'+share(tMy,tTeam)+'</b></div>'+
+     pairBars(ws.map(function(w,i){var r=st[i];return[w,r.hasMy?r.my:null,r.hasTeam?r.team:null];}),"#4a9eff","#3ddc84")+
+     '<div class="legend"><span><i style="background:#4a9eff"></i>Me</span><span><i style="background:#3ddc84"></i>Team</span></div>'+wkCap(ws,"hours per week")+'</div>';
+
+  function rate(r,a,b){return r[b]?r[a]/r[b]:null;}
+  h+='<h2 class="sec">Core % per week</h2><div class="card">'+bars(ws.map(function(w,i){return[w,rate(st[i],"coreSum","coreN")];}),"#3ddc84")+
+     wkCap(ws,"this week "+(cur.coreN?Math.round(cur.coreSum/cur.coreN*100)+"%":"—"))+'</div>';
+  h+='<h2 class="sec">Good days per week</h2><div class="card">'+bars(ws.map(function(w,i){return[w,st[i].newDays?st[i].good/7:null];}),"#f5b242")+
+     wkCap(ws,"this week "+cur.good+" / 7")+'</div>';
+  h+='<h2 class="sec">Lights out on time</h2><div class="card">'+bars(ws.map(function(w,i){return[w,rate(st[i],"lightsDone","lightsN")];}),"#a878ff")+
+     wkCap(ws,"this week "+cur.lightsDone+" / "+cur.lightsN)+'</div>';
+  var tmx=Math.max(4,Math.max.apply(null,st.map(function(r){return r.tennis;})));
+  h+='<h2 class="sec">Tennis sessions per week</h2><div class="card">'+bars(ws.map(function(w,i){return[w,st[i].newDays?st[i].tennis/tmx:null];}),"#ff7eb3")+
+     wkCap(ws,"this week "+cur.tennis+" · target 4")+'</div>';
 
   h+='<h2 class="sec">Last 90 days</h2><div class="card"><div class="hm">';
   d90.forEach(function(k){h+='<i style="background:'+shade(dayPct(k))+'" title="'+k+'"></i>';});
   h+='</div><div style="padding:0 12px 11px;color:var(--dim2);font-size:11.5px;display:flex;justify-content:space-between"><span>'+shortD(d90[0])+'</span><span>each square = one day, greener = more complete</span><span>today</span></div></div>';
 
+  var tp=partsFor(today());
   h+='<h2 class="sec">Part completion · 30 days</h2><div class="card">';
-  PARTS.forEach(function(p){
-    var r=d30.filter(function(k){return S.days[k];});
+  tp.forEach(function(p){
+    var r=d30.filter(function(k){return S.days[k]&&hasPart(k,p.id);});
     var v=r.length?r.reduce(function(a,k){return a+partPct(k,p.id);},0)/r.length:0;
     h+='<div class="wk"><span class="dot" style="background:'+p.color+'"></span><span class="n">Part '+p.id+' · '+p.tag+'</span>'+
        '<span class="mini" style="width:90px"><i style="width:'+(v*100)+'%;background:'+p.color+'"></i></span><span class="c">'+Math.round(v*100)+'%</span></div>';
@@ -503,16 +792,17 @@ function vTrends(){
   h+='</div>';
 
   h+='<h2 class="sec">Streaks by session</h2><div class="card">';
-  PARTS.forEach(function(p){
+  tp.forEach(function(p){
     p.s.forEach(function(x){
-      var cur=streak(x.id),bst=bestStreak(x.id);
-      var l7=d7.map(function(k){var v=getS(k,x.id);return[k,v&&v.d?1:(v&&v.r?.35:0)];});
-      h+='<div class="wk"><span class="dot" style="background:'+p.color+'"></span><span class="n">'+x.id+' '+esc(x.label)+'</span>'+
-         '<span class="d">'+l7.map(function(a){return '<i style="background:'+(a[1]===1?p.color:a[1]?"#5a4126":"#2a3140")+'"></i>';}).join("")+'</span>'+
-         '<span class="c">'+cur+(bst>cur?'<span style="color:var(--dim2)">/'+bst+'</span>':'')+'</span></div>';
+      var cu=streak(x.id),bst=bestStreak(x.id);
+      h+='<div class="wk"><span class="dot" style="background:'+p.color+'"></span><span class="n">'+esc(GEN[x.id]||x.label)+'</span>'+
+         '<span class="d">'+d7.map(function(k){
+            if(!scheduled(k,x.id))return '<i style="background:#171b25"></i>';
+            var v=getS(k,x.id);return '<i style="background:'+(v&&v.d?p.color:v&&v.r?"#5a4126":"#2a3140")+'"></i>';}).join("")+'</span>'+
+         '<span class="c">'+cu+(bst>cu?'<span style="color:var(--dim2)">/'+bst+'</span>':'')+'</span></div>';
     });
   });
-  h+='</div><div class="hint">Right-hand number = current streak (best streak in grey). The seven squares are the last 7 days — filled = done, amber = rolled over.</div>';
+  h+='</div><div class="hint">Right-hand number = current streak (best streak in grey). The seven squares are the last 7 days — filled = done, amber = rolled over, darkest = not scheduled that day (it doesn\'t break the streak).</div>';
 
   h+='<h2 class="sec">Body data</h2><div class="tabs">'+METRICS.map(function(m){
      return '<button data-m="'+m.k+'"'+(trMetric===m.k?' class="on"':'')+'>'+m.n+'</button>';}).join("")+'</div>';
@@ -534,6 +824,7 @@ function vTrends(){
 
 /* ---------------- REVIEW ---------------- */
 var wkStart=mondayOf(today());
+function rv(){if(!S.reviews[wkStart])S.reviews[wkStart]={};return S.reviews[wkStart];}
 function vReview(){
   document.getElementById("hTitle").textContent="Weekly review";
   var end=shift(wkStart,6);
@@ -542,38 +833,62 @@ function vReview(){
   var days=[];for(var i=0;i<7;i++)days.push(shift(wkStart,i));
   var rec=days.filter(function(k){return S.days[k];});
   var avg=rec.length?rec.reduce(function(a,k){return a+dayPct(k);},0)/rec.length:0;
-  var doneN=0,rollN=0;
-  days.forEach(function(k){var d=S.days[k];if(!d)return;ALL.forEach(function(x){var v=d.sessions[x.id];if(v&&v.d)doneN++;if(v&&v.r)rollN++;});});
+  var doneN=0,rollN=0,totN=0;
+  days.forEach(function(k){if(k<=today())totN+=itemsFor(k).length;var d=S.days[k];if(!d)return;itemsFor(k).forEach(function(x){var v=d.sessions[x.id];if(v&&v.d)doneN++;if(v&&v.r)rollN++;});});
   var best=null,worst=null;
   rec.forEach(function(k){var p=dayPct(k);if(best===null||p>dayPct(best))best=k;if(worst===null||p<dayPct(worst))worst=k;});
+  var W=weekStats(wkStart),R=S.reviews[wkStart]||{};
 
   var h='<div class="dateBar"><button id="pw">‹</button><div class="lbl">'+shortD(wkStart)+' – '+shortD(end)+'<small>'+(wkStart===mondayOf(today())?"this week":"")+'</small></div><button id="nw">›</button></div>';
   h+='<div class="stats"><div class="stat"><b style="color:var(--ok)">'+Math.round(avg*100)+'%</b><span>week completion</span></div>'+
-     '<div class="stat"><b>'+doneN+'</b><span>sessions done<br>of '+(ALL.length*7)+'</span></div>'+
+     '<div class="stat"><b>'+doneN+'</b><span>sessions done<br>of '+totN+'</span></div>'+
      '<div class="stat"><b style="color:var(--roll)">'+rollN+'</b><span>rolled over</span></div></div>';
+  if(W.newDays){
+    h+='<div class="stats" style="margin-top:9px"><div class="stat"><b style="color:var(--warn)">'+W.good+' / 7</b><span>good days<br>(Core 75%+)</span></div>'+
+       '<div class="stat"><b>'+W.med+' / '+W.medN+'</b><span>meditations</span></div>'+
+       '<div class="stat"><b>'+W.train+'</b><span>training sessions</span></div></div>';
+  }
 
   h+='<h2 class="sec">Day by day</h2><div class="card">';
   days.forEach(function(k){
-    var p=dayPct(k);
+    var p=dayPct(k),c=S.days[k]?coreScore(k):null;
     h+='<div class="wk"><span class="n" style="flex:0 0 92px">'+DAY[parse(k).getDay()].slice(0,3)+' '+shortD(k)+'</span>'+
        '<span class="mini" style="flex:1;width:auto"><i style="width:'+((p||0)*100)+'%;background:'+(p===null?"#2a3140":shade(p))+'"></i></span>'+
-       '<span class="c">'+(p===null?"—":Math.round(p*100)+"%")+'</span></div>';
+       '<span class="c" style="width:auto;min-width:30px">'+(p===null?"—":Math.round(p*100)+"%")+(c?' · <span style="color:'+(c.p>=.75?"var(--ok)":"var(--warn)")+'">C '+c.n+'/'+c.t+'</span>':'')+'</span></div>';
   });
   h+='</div>';
   if(best)h+='<div class="hint">Best day: <b>'+pretty(best).split(",")[0]+' '+shortD(best)+'</b> at '+Math.round(dayPct(best)*100)+'%. Weakest: <b>'+pretty(worst).split(",")[0]+' '+shortD(worst)+'</b> at '+Math.round(dayPct(worst)*100)+'%.</div>';
 
+  if(W.newDays){
+    h+='<h2 class="sec">Billing this week (Friday review)</h2><div class="card">'+
+       '<div class="mrow"><span>My billable hours</span><b>'+fmt(W.my)+' h</b></div>'+
+       '<div class="mrow"><span>Team billable hours</span><b>'+fmt(W.team)+' h</b></div>'+
+       '<div class="mrow"><span>Team share</span><b style="color:var(--ok)">'+share(W.my,W.team)+'</b></div>'+
+       '<div class="nums flat"><label><span>Invoices raised</span><input type="number" inputmode="numeric" min="0" data-rv="inv" value="'+esc(R.inv==null?"":R.inv)+'" placeholder="0"></label>'+
+       '<label><span>Collections chased</span><input type="number" inputmode="numeric" min="0" data-rv="col" value="'+esc(R.col==null?"":R.col)+'" placeholder="0"></label></div>'+
+       '<div class="nums flat" style="padding-top:0"><label class="wide"><span>Billing notes</span><input type="text" data-rv="bnotes" value="'+esc(R.bnotes||"")+'" placeholder="Matter with the widest billed-vs-collected gap…"></label></div></div>'+
+       '<div class="hint">Hours fill in from each evening\'s <b>Billing numbers</b> entry.</div>';
+    h+='<h2 class="sec">Health & tennis</h2><div class="card">'+
+       '<div class="mrow"><span>Lights out on time</span><b>'+W.lightsDone+' / '+W.lightsN+'</b></div>'+
+       '<div class="mrow"><span>Tennis sessions</span><b>'+W.tennis+'</b></div>'+
+       '<div class="mrow"><span>Matches won – lost</span><b>'+W.w+' – '+W.l+'</b></div>';
+    W.matches.forEach(function(a){var m=a[1];h+='<div class="logRow"><span class="badge '+(m.wl==="W"?"b-ok":"b-roll")+'">'+(m.wl==="W"?"WON":"LOST")+'</span><div class="t">'+shortD(a[0])+(m.opp?' vs '+esc(m.opp):'')+(m.score?'<small>'+esc(m.score)+'</small>':'')+'</div></div>';});
+    h+='</div>';
+  }
+
   h+='<h2 class="sec">Session scorecard</h2><div class="card">';
-  PARTS.forEach(function(p){
-    p.s.forEach(function(x){
-      var c=0,r=0,cells="";
-      days.forEach(function(k){
-        var v=getS(k,x.id);
-        if(v&&v.d){c++;cells+='<i style="background:'+p.color+'"></i>';}
-        else if(v&&v.r){r++;cells+='<i style="background:#5a4126"></i>';}
-        else cells+='<i></i>';
-      });
-      h+='<div class="wk"><span class="dot" style="background:'+p.color+'"></span><span class="n">'+x.id+' '+esc(x.label)+'</span><span class="d">'+cells+'</span><span class="c">'+c+'/7</span></div>';
+  var seen={},order=[];
+  days.forEach(function(k){partsFor(k).forEach(function(p){p.s.forEach(function(x){if(!seen[x.id]){seen[x.id]={x:x,color:p.color};order.push(x.id);}});});});
+  order.forEach(function(id){
+    var it=seen[id],c=0,s=0,cells="";
+    days.forEach(function(k){
+      if(!scheduled(k,id)){cells+='<i style="background:#171b25"></i>';return;}
+      if(k<=today())s++;var v=getS(k,id);
+      if(v&&v.d){c++;cells+='<i style="background:'+it.color+'"></i>';}
+      else if(v&&v.r)cells+='<i style="background:#5a4126"></i>';
+      else cells+='<i></i>';
     });
+    h+='<div class="wk"><span class="dot" style="background:'+it.color+'"></span><span class="n">'+esc(GEN[id]||it.x.label)+'</span><span class="d">'+cells+'</span><span class="c">'+c+'/'+s+'</span></div>';
   });
   h+='</div>';
 
@@ -595,15 +910,30 @@ function vReview(){
     notes.forEach(function(k){h+='<div class="logRow"><span class="badge b-no">'+shortD(k)+'</span><div class="t"><small>'+esc(S.days[k].misc)+'</small></div></div>';});
     h+='</div>';
   }
+  h+='<h2 class="sec">Sunday reflection</h2>'+
+     '<div class="misc" style="margin-bottom:9px"><textarea data-rv="slip" placeholder="What slipped this week, and why?">'+esc(R.slip||"")+'</textarea></div>'+
+     '<div class="misc" style="margin-bottom:12px"><textarea data-rv="change" placeholder="One change for next week">'+esc(R.change||"")+'</textarea></div>';
   h+='<button class="btn" id="cpy">Copy this week as text</button>';
   V.innerHTML=h;
+  V.querySelectorAll("[data-rv]").forEach(function(t){
+    t.addEventListener("input",function(){var r=rv(),k=t.dataset.rv;r[k]=(t.type==="number")?(t.value===""?null:+t.value):t.value;save();});
+  });
   document.getElementById("pw").onclick=function(){wkStart=shift(wkStart,-7);vReview();};
   document.getElementById("nw").onclick=function(){if(wkStart<mondayOf(today())){wkStart=shift(wkStart,7);vReview();}else toast("Already on this week");};
   document.getElementById("cpy").onclick=function(){
-    var t="Weekly review "+wkStart+" to "+end+"\n"+Math.round(avg*100)+"% complete, "+doneN+" sessions done, "+rollN+" rolled over\n\n";
-    PARTS.forEach(function(p){t+="Part "+p.id+" ("+p.tag+")\n";p.s.forEach(function(x){
-      var c=0;days.forEach(function(k){var v=getS(k,x.id);if(v&&v.d)c++;});
-      t+="  "+x.id+" "+x.label+": "+c+"/7\n";});});
+    var R2=S.reviews[wkStart]||{},W2=weekStats(wkStart);
+    var t="Weekly review "+wkStart+" to "+end+"\n"+Math.round(avg*100)+"% complete, "+doneN+" sessions done, "+rollN+" rolled over\n";
+    if(W2.newDays){
+      t+="Good days: "+W2.good+"/7 · meditations "+W2.med+"/"+W2.medN+" · training sessions "+W2.train+" · lights out on time "+W2.lightsDone+"/"+W2.lightsN+"\n";
+      t+="Billing: me "+fmt(W2.my)+"h, team "+fmt(W2.team)+"h (team share "+share(W2.my,W2.team)+")"+(R2.inv!=null?", invoices raised "+R2.inv:"")+(R2.col!=null?", collections chased "+R2.col:"")+"\n";
+      if(R2.bnotes)t+="Billing notes: "+R2.bnotes+"\n";
+      t+="Tennis: "+W2.tennis+" sessions, matches "+W2.w+"–"+W2.l+"\n";
+      if(R2.slip)t+="What slipped: "+R2.slip+"\n";
+      if(R2.change)t+="One change: "+R2.change+"\n";
+    }
+    t+="\n";
+    order.forEach(function(id){var c=0,s=0;days.forEach(function(k){if(!scheduled(k,id)||k>today())return;s++;var v=getS(k,id);if(v&&v.d)c++;});
+      t+="  "+(GEN[id]||seen[id].x.label)+": "+c+"/"+s+"\n";});
     copy(t);
   };
 }
@@ -620,12 +950,36 @@ function fallbackCopy(t){
 /* ---------------- MORE ---------------- */
 function vMore(){
   document.getElementById("hTitle").textContent="More";
-  document.getElementById("hSub").textContent="Data, backup and body metrics";
+  document.getElementById("hSub").textContent="Tennis, data, backup and body metrics";
   document.getElementById("hRight").innerHTML="";
   var nd=Object.keys(S.days).length,nm=Object.keys(S.metrics).length;
   var h='<div class="stats"><div class="stat"><b>'+nd+'</b><span>days logged</span></div>'+
         '<div class="stat"><b>'+nm+'</b><span>body-data days</span></div>'+
-        '<div class="stat"><b>'+ALL.length+'</b><span>sessions/day</span></div></div>';
+        '<div class="stat"><b>'+itemsFor(today()).length+'</b><span>sessions today</span></div></div>';
+
+  /* tennis */
+  var ms=allMatches(),w=0,l=0;ms.forEach(function(a){if(a[1].wl==="W")w++;else if(a[1].wl==="L")l++;});
+  var tgt=S.settings.target,cd=tgt?daysBetween(today(),tgt):null;
+  var types={};TENNIS_O.forEach(function(o){types[o]=0;});var sess=0;
+  weeks(4).forEach(function(ws){var r=weekStats(ws);sess+=r.tennis;TENNIS_O.forEach(function(o){types[o]+=r.types[o];});});
+  h+='<h2 class="sec">Tennis · ITF Masters 40+</h2>'+
+     '<div class="stats"><div class="stat"><b style="color:var(--ok)">'+w+' – '+l+'</b><span>matches won – lost</span></div>'+
+     '<div class="stat"><b>'+sess+'</b><span>sessions<br>last 4 weeks</span></div>'+
+     '<div class="stat"><b style="color:var(--warn)">'+(cd===null?"—":cd<0?"done":cd)+'</b><span>'+(cd===null?"set a target date":"days to target")+'</span></div></div>'+
+     '<div class="card" style="margin-top:9px"><div class="nums flat"><label class="wide"><span>Target tournament date</span><input type="date" id="tgt" value="'+esc(tgt)+'"></label></div>';
+  TENNIS_O.forEach(function(o){
+    var mx=Math.max(1,types.Drills,types["Points & patterns"],types["Match play"]);
+    h+='<div class="wk"><span class="n">'+esc(o)+' · last 4 weeks</span><span class="mini" style="width:90px"><i style="width:'+(types[o]/mx*100)+'%;background:#ff7eb3"></i></span><span class="c">'+types[o]+'</span></div>';
+  });
+  h+='</div>';
+  if(ms.length){
+    h+='<div class="card">';
+    ms.slice(-8).reverse().forEach(function(a){var m=a[1];
+      h+='<div class="logRow"><span class="badge '+(m.wl==="W"?"b-ok":m.wl==="L"?"b-roll":"b-no")+'">'+(m.wl==="W"?"WON":m.wl==="L"?"LOST":"—")+'</span><div class="t">'+shortD(a[0])+(m.opp?' vs '+esc(m.opp):'')+(m.score?'<small>'+esc(m.score)+'</small>':'')+'</div></div>';});
+    h+='</div>';
+  }
+  h+='<div class="hint">Tick <b>Match play</b> on a tennis session (Sunday long tennis shows it automatically) to log opponent, score and result.</div>';
+
   h+='<h2 class="sec">Import body data</h2>'+
      '<div class="hint">Paste the JSON block Claude sends you each morning after reading your Whoop / Apple Activity screenshots, then tap Import.</div>'+
      '<textarea class="paste" id="pj" placeholder=\'{"2026-08-05":{"recovery":68,"strain":13.2,"hrv":54,"rhr":48,"sleep":7.1,"move":640,"exercise":52,"steps":9100}}\'></textarea>'+
@@ -636,8 +990,9 @@ function vMore(){
      '<button class="btn" id="rst">Restore from backup file</button>'+
      '<input type="file" id="fi" accept=".json,application/json" style="display:none">';
   h+='<h2 class="sec">Danger zone</h2><button class="btn dgr" id="wipe">Erase all data</button>';
-  h+='<div class="hint" style="padding-top:14px">Daily — built for Animesh. All data lives on this iPhone only; nothing is sent anywhere.</div>';
+  h+='<div class="hint" style="padding-top:14px">Day-by-day checklists began on '+pretty(EFFECTIVE)+'. Earlier days keep the old 15-item list exactly as logged.<br>Daily — built for Animesh. All data lives on this iPhone only; nothing is sent anywhere.</div>';
   V.innerHTML=h;
+  document.getElementById("tgt").addEventListener("change",function(e){S.settings.target=e.target.value;save();vMore();});
   document.getElementById("imp").onclick=function(){
     var t=document.getElementById("pj").value.trim();if(!t)return toast("Nothing to import");
     try{
@@ -652,12 +1007,14 @@ function vMore(){
   };
   document.getElementById("exp").onclick=function(){dl("daily-backup-"+today()+".json",JSON.stringify(S),"application/json");};
   document.getElementById("csv").onclick=function(){
-    var r=[["date","part","session","name","done","rolled_over","carry_days","option","work_done","misc"]];
+    var r=[["date","court_day","part","session","name","done","rolled_over","carry_days","option","my_hrs","team_hrs","minutes","lights_out","book","opponent","score","result","work_done","misc"]];
     Object.keys(S.days).sort().forEach(function(k){
       var d=S.days[k];
-      ALL.forEach(function(x){
-        var v=d.sessions[x.id];if(!v)return;
-        r.push([k,x.part,x.id,x.label,v.d?1:0,v.r?1:0,d.carry[x.id]||0,optStr(v.o,"; "),v.w||"",d.misc||""]);
+      itemsFor(k).forEach(function(x){
+        var v=d.sessions[x.id];if(!v)return;var m=v.m||{};
+        r.push([k,d.court?1:0,x.part,x.id,x.label,v.d?1:0,v.r?1:0,d.carry[x.id]||0,optStr(v.o,"; "),
+                num(v,"my")==null?"":num(v,"my"),num(v,"team")==null?"":num(v,"team"),num(v,"min")==null?"":num(v,"min"),
+                v.t||"",v.b||"",m.opp||"",m.score||"",m.wl||"",v.w||"",d.misc||""]);
       });
     });
     dl("daily-log-"+today()+".csv",r.map(function(row){return row.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(",");}).join("\n"),"text/csv");
@@ -665,7 +1022,7 @@ function vMore(){
   document.getElementById("rst").onclick=function(){document.getElementById("fi").click();};
   document.getElementById("fi").onchange=function(e){
     var f=e.target.files[0];if(!f)return;var r=new FileReader();
-    r.onload=function(){try{var o=JSON.parse(r.result);if(!o.days)throw 0;S=o;S.metrics=S.metrics||{};save();toast("Restored");render();}catch(x){toast("Bad backup file");}};
+    r.onload=function(){try{var o=JSON.parse(r.result);if(!o.days)throw 0;S=fix(o);TMEMO={};save();toast("Restored");render();}catch(x){toast("Bad backup file");}};
     r.readAsText(f);
   };
   document.getElementById("wipe").onclick=function(){
