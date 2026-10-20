@@ -184,7 +184,7 @@ var LEGACY=[
 /* ---------------- new checklists (from EFFECTIVE) ---------------- */
 var TENNIS_O=["Drills","Points & patterns","Match play"];
 var RT_O=["Annotate source","Evidence matrix","300-word note"];
-var RT_SAT_O=["Annotate source","Evidence matrix","300-word note","Site visit","Interview / lecture","Weekly log"];
+var RT_SAT_O=["Annotate source","Evidence matrix","300-word note","Interview / lecture","Weekly log"];
 function P(id,tag,s){return{id:id,tag:tag,color:COLORS[id],s:s.filter(Boolean)};}
 function weekdayParts(w,court){
   var train={1:["Mobility + core",["Mobility","Core","Activation"]],3:["Mobility + core",["Mobility","Core","Activation"]],5:["Mobility + core",["Mobility","Core","Activation"]],
@@ -211,6 +211,7 @@ function weekdayParts(w,court){
     P("D","Afternoon",[
       {id:"admin",label:"Billing, BD & admin",time:"3:00–4:00",o:["Bills raised","Bills chased","Junior review","BD","Email"]},
       court?{id:"pad",label:"Walking pad — 20 min",time:"4:00–4:30",o:["Pre-stretch","Walk 20 min","Post-stretch","Meditation 2"]}
+           :w===5?{id:"pad",label:"Rahim's Tomb site visit (or pad walk)",time:"4:00–5:00 · enter by 4:00",o:["Site visit","Pad walk instead","Meditation 2"],ph:"Visit ID, zones, photo IDs, 3 open questions…"}
            :{id:"pad",label:"Walking pad block",time:"4:00–5:00",o:["Pre-stretch","Walk 30 min","Post-stretch","Meditation 2"]},
       {id:"med2",label:"Meditation 2 (7 min)",time:"in the pad block"}]),
     P("E","Evening",[
@@ -225,18 +226,17 @@ function weekdayParts(w,court){
 }
 function satParts(){
   return [
-    P("A","Pre-dawn",[
-      {id:"wake",label:"Wake @ 5:45 + snack",time:"5:45"},
+    P("A","Relaxed start",[
+      {id:"wake",label:"Relaxed morning — up by 6:30 + snack",time:"no alarm before 6:30"},
       {id:"med1",label:"Meditation 1 (7 min)"}]),
     P("B","Morning",[
-      {id:"nets",label:"Cricket nets",time:"6:30–9:00",o:["Glucose tablets packed"]},
-      {id:"avyaan",label:"Avyaan",o:["Reading","Cricket","Tennis","Unstructured fun"],ph:"What we did…"}]),
+      {id:"nets",label:"Cricket + fitness",time:"6:30–9:00",o:["Cricket","Fitness","Glucose tablets packed"]},
+      {id:"avyaan",label:"Avyaan",time:"late morning",o:["Reading","Cricket","Tennis","Unstructured fun"],ph:"What we did…"}]),
     P("C","Midday",[
-      {id:"rtomb",label:"Rahim's Tomb — long session",time:"12:00–1:30",o:RT_SAT_O,ph:"What I read, saw or wrote; next single action…"},
-      {id:"nap",label:"Nap 20–30 min"}]),
-    P("D","Afternoon",[
-      {id:"ride",label:"Long ride",time:"4:30–6:00",num:[["min","Minutes"]]}]),
+      {id:"ride",label:"Long cycling session",time:"11:00–1:00",o:["Glucose tablets packed","Electrolytes"],num:[["min","Minutes"]]},
+      {id:"nap",label:"Lunch + nap 20–30 min",time:"after the ride"}]),
     P("E","Evening",[
+      {id:"rtomb",label:"Rahim's Tomb reading",time:"7:00–8:30 pm",o:RT_SAT_O,ph:"What I read or wrote; next single action…"},
       {id:"med2",label:"Meditation 2 (7 min)"}]),
     P("F","Night",[
       {id:"lights",label:"Lights out by 9:30",timeIn:1}])
@@ -244,15 +244,13 @@ function satParts(){
 }
 function sunParts(){
   return [
-    P("A","Pre-dawn",[
-      {id:"wake",label:"Wake @ 6:00 + snack",time:"6:00"},
-      {id:"med1",label:"Meditation 1 (7 min)"}]),
-    P("B","Morning",[
-      {id:"ltennis",label:"Long tennis — match play",time:"6:30–8:30",o:TENNIS_O,tennis:1,alwaysMatch:1},
-      {id:"avyaan",label:"Avyaan",o:["Tennis","Cricket","Watching sports","Unstructured fun"],ph:"What we did…"}]),
-    P("C","Midday",[
-      {id:"rest",label:"Full rest afternoon"}]),
-    P("D","Afternoon",[
+    P("A","Morning",[
+      {id:"wake",label:"Wake + snack",time:"before the match"},
+      {id:"med1",label:"Meditation 1 (7 min)"},
+      {id:"ltennis",label:"Cricket or tennis match",time:"until 11:00",o:["Tennis match","Cricket match","Glucose tablets packed"],tennis:1},
+      {id:"rest",label:"Rest & recovery",time:"after the match",o:["Stretch","Foam roll","Nap"]}]),
+    P("C","Second half",[
+      {id:"avyaan",label:"Quality time with Avyaan",o:["Tennis","Cricket","Watching sports","Reading","Unstructured fun"],ph:"What we did…"},
       {id:"review",label:"Weekly review",time:"6:00 pm · 15 min",link:"review"}]),
     P("E","Evening",[
       {id:"med2",label:"Meditation 2 (7 min)"}]),
@@ -417,11 +415,13 @@ function weekStats(ws){
     if(my!==null){r.my+=my;r.hasMy=1;} if(tm!==null){r.team+=tm;r.hasTeam=1;}
     var c=coreScore(k);r.coreSum+=c.p;r.coreN++;if(c.p>=.75)r.good++;
     if(scheduled(k,"rtomb")){r.rtN++;var rt=getS(k,"rtomb");if(rt&&rt.d){r.rt++;r.rtMin+=dow(k)===6?90:30;}}
+    if(dow(k)===5){var sv=getS(k,"pad");if(sv&&optArr(sv.o).indexOf("Site visit")>=0){r.visits=(r.visits||0)+1;r.rtMin+=60;}}
     if(scheduled(k,"lights")){r.lightsN++;var l=getS(k,"lights");if(l&&l.d)r.lightsDone++;}
     ["med1","med2"].forEach(function(id){if(scheduled(k,id)){r.medN++;var v=getS(k,id);if(v&&v.d)r.med++;}});
     TRAIN_IDS.forEach(function(id){if(scheduled(k,id)){var v=getS(k,id);if(v&&v.d)r.train++;}});
     ["msess","ltennis"].forEach(function(id){
       var it=findItem(k,id);if(!it||!it.tennis)return;var v=getS(k,id);if(!v)return;
+      if(id==="ltennis"&&optArr(v.o).indexOf("Tennis match")<0)return;
       if(v.d){r.tennis++;optArr(v.o).forEach(function(o){if(r.types[o]!=null)r.types[o]++;});}
       if(v.m&&(v.m.wl==="W"||v.m.wl==="L")){if(v.m.wl==="W")r.w++;else r.l++;r.matches.push([k,v.m]);}
     });
@@ -510,7 +510,7 @@ function vToday(){
       }
       if(x.timeIn)h+='<div class="nums"><label><span>Lights out at</span><input type="time" data-in="tin" data-s="'+x.id+'" value="'+esc(v.t||"")+'"></label></div>';
       if(x.book)h+='<div class="nums"><label class="wide"><span>Current book</span><input type="text" data-in="book" data-s="'+x.id+'" value="'+esc(S.settings.book)+'" placeholder="e.g. Thinking in Bets"></label></div>';
-      if(x.tennis&&(x.alwaysMatch||optArr(v.o).indexOf("Match play")>=0)){
+      if(x.tennis&&(optArr(v.o).indexOf("Match play")>=0||optArr(v.o).indexOf("Tennis match")>=0)){
         var m=v.m||{};
         h+='<div class="nums"><label><span>Opponent</span><input type="text" data-in="mopp" data-s="'+x.id+'" value="'+esc(m.opp||"")+'"></label>'+
            '<label><span>Score</span><input type="text" data-in="mscore" data-s="'+x.id+'" value="'+esc(m.score||"")+'" placeholder="6-4 3-6 10-7"></label></div>'+
@@ -881,8 +881,9 @@ function vReview(){
     W.matches.forEach(function(a){var m=a[1];h+='<div class="logRow"><span class="badge '+(m.wl==="W"?"b-ok":"b-roll")+'">'+(m.wl==="W"?"WON":"LOST")+'</span><div class="t">'+shortD(a[0])+(m.opp?' vs '+esc(m.opp):'')+(m.score?'<small>'+esc(m.score)+'</small>':'')+'</div></div>';});
     h+='</div>';
     h+='<h2 class="sec">Rahim\'s Tomb</h2><div class="card"><div class="mrow"><span>Sessions done</span><b>'+W.rt+' / '+rtN+'</b></div>'+
+       '<div class="mrow"><span>Site visits</span><b>'+(W.visits||0)+'</b></div>'+
        '<div class="mrow"><span>Hours this week</span><b style="color:var(--ok)">'+fmt(W.rtMin/60)+' h</b></div></div>'+
-       '<div class="hint">Playbook target: 2–3 h/week. Weekday = 30 min, Saturday = 90 min.</div>';
+       '<div class="hint">Playbook target: 2–3 h/week. Weekday lunch = 30 min, Friday site visit = 60 min, Saturday reading = 90 min.</div>';
   }
 
   h+='<h2 class="sec">Session scorecard</h2><div class="card">';
@@ -988,7 +989,7 @@ function vMore(){
       h+='<div class="logRow"><span class="badge '+(m.wl==="W"?"b-ok":m.wl==="L"?"b-roll":"b-no")+'">'+(m.wl==="W"?"WON":m.wl==="L"?"LOST":"—")+'</span><div class="t">'+shortD(a[0])+(m.opp?' vs '+esc(m.opp):'')+(m.score?'<small>'+esc(m.score)+'</small>':'')+'</div></div>';});
     h+='</div>';
   }
-  h+='<div class="hint">Tick <b>Match play</b> on a tennis session (Sunday long tennis shows it automatically) to log opponent, score and result.</div>';
+  h+='<div class="hint">Tick <b>Match play</b> on a weekday tennis session, or <b>Tennis match</b> on Sunday, to log opponent, score and result.</div>';
 
   h+='<h2 class="sec">Import body data</h2>'+
      '<div class="hint">Paste the JSON block Claude sends you each morning after reading your Whoop / Apple Activity screenshots, then tap Import.</div>'+
