@@ -1,4 +1,4 @@
-var C = "daily-v13";
+var C = "daily-v14";
 self.addEventListener("install", function (e) {
   self.skipWaiting();
   e.waitUntil(caches.open(C).then(function (c) { return c.addAll(["./", "./index.html"]); }).catch(function () {}));
