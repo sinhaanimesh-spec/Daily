@@ -206,10 +206,10 @@ function weekdayParts(w,court){
       {id:"assign",label:"Assign juniors the day's work",time:"10:30"},
       court?{id:"court",label:"Court hearing",time:"10:30–3:00"}:{id:"cb1",label:"Counsel block 1 — deep",time:"10:30–1:00"},
       {id:"rtomb",label:"Rahim's Tomb research (30 min)",time:"1:00–1:30 · over lunch",o:RT_O,ph:"Source read / row updated / note…"},
-      {id:"lunch",label:"Lunch + 10-min pad stroll",time:"1:00–1:40"},
-      court?null:{id:"cb2",label:"Counsel block 2",time:"1:40–3:00"}]),
+      {id:"lunch",label:"Lunch + 10-min pad stroll",time:"1:00–2:00 · stroll 1:30–1:40, then buffer"},
+      court?null:{id:"cb2",label:"Counsel block 2",time:"2:00–3:30"}]),
     P("D","Afternoon",[
-      {id:"admin",label:"Billing, BD & admin",time:"3:00–4:00",o:["Bills raised","Bills chased","Junior review","BD","Email"]},
+      {id:"admin",label:"Billing, BD & admin",time:"3:30–4:00",o:["Bills raised","Bills chased","Junior review","BD","Email"]},
       court?{id:"pad",label:"Walking pad — 20 min",time:"4:00–4:30",o:["Pre-stretch","Walk 20 min","Post-stretch","Meditation 2"]}
            :w===5?{id:"pad",label:"Rahim's Tomb site visit (or pad walk)",time:"4:00–5:00 · enter by 4:00",o:["Site visit","Pad walk instead","Meditation 2"],ph:"Visit ID, zones, photo IDs, 3 open questions…"}
            :{id:"pad",label:"Walking pad block",time:"4:00–5:00",o:["Pre-stretch","Walk 30 min","Post-stretch","Meditation 2"]},
