@@ -183,6 +183,8 @@ var LEGACY=[
 
 /* ---------------- new checklists (from EFFECTIVE) ---------------- */
 var TENNIS_O=["Drills","Points & patterns","Match play"];
+var RT_O=["Annotate source","Evidence matrix","300-word note"];
+var RT_SAT_O=["Annotate source","Evidence matrix","300-word note","Site visit","Interview / lecture","Weekly log"];
 function P(id,tag,s){return{id:id,tag:tag,color:COLORS[id],s:s.filter(Boolean)};}
 function weekdayParts(w,court){
   var train={1:["Mobility + core",["Mobility","Core","Activation"]],3:["Mobility + core",["Mobility","Core","Activation"]],5:["Mobility + core",["Mobility","Core","Activation"]],
@@ -203,8 +205,9 @@ function weekdayParts(w,court){
       {id:"car",label:"Car study (audio)",time:"9:15–10:15",ph:"3 lines learned…",book:1},
       {id:"assign",label:"Assign juniors the day's work",time:"10:30"},
       court?{id:"court",label:"Court hearing",time:"10:30–3:00"}:{id:"cb1",label:"Counsel block 1 — deep",time:"10:30–1:00"},
-      {id:"lunch",label:"Lunch + 10-min pad stroll",time:"1:00–1:30"},
-      court?null:{id:"cb2",label:"Counsel block 2",time:"1:30–3:00"}]),
+      {id:"rtomb",label:"Rahim's Tomb research (30 min)",time:"1:00–1:30 · over lunch",o:RT_O,ph:"Source read / row updated / note…"},
+      {id:"lunch",label:"Lunch + 10-min pad stroll",time:"1:00–1:40"},
+      court?null:{id:"cb2",label:"Counsel block 2",time:"1:40–3:00"}]),
     P("D","Afternoon",[
       {id:"admin",label:"Billing, BD & admin",time:"3:00–4:00",o:["Bills raised","Bills chased","Junior review","BD","Email"]},
       court?{id:"pad",label:"Walking pad — 20 min",time:"4:00–4:30",o:["Pre-stretch","Walk 20 min","Post-stretch","Meditation 2"]}
@@ -229,6 +232,7 @@ function satParts(){
       {id:"nets",label:"Cricket nets",time:"6:30–9:00",o:["Glucose tablets packed"]},
       {id:"avyaan",label:"Avyaan",o:["Reading","Cricket","Tennis","Unstructured fun"],ph:"What we did…"}]),
     P("C","Midday",[
+      {id:"rtomb",label:"Rahim's Tomb — long session",time:"12:00–1:30",o:RT_SAT_O,ph:"What I read, saw or wrote; next single action…"},
       {id:"nap",label:"Nap 20–30 min"}]),
     P("D","Afternoon",[
       {id:"ride",label:"Long ride",time:"4:30–6:00",num:[["min","Minutes"]]}]),
@@ -272,7 +276,7 @@ function itemsFor(date){return tpl(date).items;}
 function findItem(date,id){return tpl(date).map[id]||null;}
 
 /* catalogue of every new item (for Log › By session) */
-var GEN={wake:"Wake + snack",train:"Morning training",msess:"Morning session (tennis / walk / physio)",avyaan:"Avyaan time",
+var GEN={rtomb:"Rahim's Tomb research",wake:"Wake + snack",train:"Morning training",msess:"Morning session (tennis / walk / physio)",avyaan:"Avyaan time",
   deep:"Evening deep work",pad:"Walking pad block",lights:"Lights out",cb1:"Counsel block 1",cb2:"Counsel block 2"};
 var CAT=[],CATMAP={};
 (function(){
@@ -403,7 +407,7 @@ function daysBack(n){var a=[],t=today();for(var i=n-1;i>=0;i--)a.push(shift(t,-i
 /* ---------------- weekly aggregates ---------------- */
 var TRAIN_IDS=["train","msess","nets","ride","ltennis"];
 function weekStats(ws){
-  var r={my:0,team:0,hasMy:0,hasTeam:0,coreSum:0,coreN:0,good:0,lightsDone:0,lightsN:0,tennis:0,med:0,medN:0,train:0,w:0,l:0,matches:[],newDays:0,types:{}};
+  var r={rt:0,rtMin:0,rtN:0,my:0,team:0,hasMy:0,hasTeam:0,coreSum:0,coreN:0,good:0,lightsDone:0,lightsN:0,tennis:0,med:0,medN:0,train:0,w:0,l:0,matches:[],newDays:0,types:{}};
   TENNIS_O.forEach(function(o){r.types[o]=0;});
   for(var i=0;i<7;i++){
     var k=shift(ws,i);if(k>today())continue;
@@ -412,6 +416,7 @@ function weekStats(ws){
     var b=getS(k,"bill"),my=num(b,"my"),tm=num(b,"team");
     if(my!==null){r.my+=my;r.hasMy=1;} if(tm!==null){r.team+=tm;r.hasTeam=1;}
     var c=coreScore(k);r.coreSum+=c.p;r.coreN++;if(c.p>=.75)r.good++;
+    if(scheduled(k,"rtomb")){r.rtN++;var rt=getS(k,"rtomb");if(rt&&rt.d){r.rt++;r.rtMin+=dow(k)===6?90:30;}}
     if(scheduled(k,"lights")){r.lightsN++;var l=getS(k,"lights");if(l&&l.d)r.lightsDone++;}
     ["med1","med2"].forEach(function(id){if(scheduled(k,id)){r.medN++;var v=getS(k,id);if(v&&v.d)r.med++;}});
     TRAIN_IDS.forEach(function(id){if(scheduled(k,id)){var v=getS(k,id);if(v&&v.d)r.train++;}});
@@ -872,8 +877,12 @@ function vReview(){
        '<div class="mrow"><span>Lights out on time</span><b>'+W.lightsDone+' / '+W.lightsN+'</b></div>'+
        '<div class="mrow"><span>Tennis sessions</span><b>'+W.tennis+'</b></div>'+
        '<div class="mrow"><span>Matches won – lost</span><b>'+W.w+' – '+W.l+'</b></div>';
+    var rtN=W.rtN||0;
     W.matches.forEach(function(a){var m=a[1];h+='<div class="logRow"><span class="badge '+(m.wl==="W"?"b-ok":"b-roll")+'">'+(m.wl==="W"?"WON":"LOST")+'</span><div class="t">'+shortD(a[0])+(m.opp?' vs '+esc(m.opp):'')+(m.score?'<small>'+esc(m.score)+'</small>':'')+'</div></div>';});
     h+='</div>';
+    h+='<h2 class="sec">Rahim\'s Tomb</h2><div class="card"><div class="mrow"><span>Sessions done</span><b>'+W.rt+' / '+rtN+'</b></div>'+
+       '<div class="mrow"><span>Hours this week</span><b style="color:var(--ok)">'+fmt(W.rtMin/60)+' h</b></div></div>'+
+       '<div class="hint">Playbook target: 2–3 h/week. Weekday = 30 min, Saturday = 90 min.</div>';
   }
 
   h+='<h2 class="sec">Session scorecard</h2><div class="card">';
@@ -928,6 +937,7 @@ function vReview(){
       t+="Billing: me "+fmt(W2.my)+"h, team "+fmt(W2.team)+"h (team share "+share(W2.my,W2.team)+")"+(R2.inv!=null?", invoices raised "+R2.inv:"")+(R2.col!=null?", collections chased "+R2.col:"")+"\n";
       if(R2.bnotes)t+="Billing notes: "+R2.bnotes+"\n";
       t+="Tennis: "+W2.tennis+" sessions, matches "+W2.w+"–"+W2.l+"\n";
+      t+="Rahim's Tomb: "+W2.rt+"/"+W2.rtN+" sessions, "+fmt(W2.rtMin/60)+" h\n";
       if(R2.slip)t+="What slipped: "+R2.slip+"\n";
       if(R2.change)t+="One change: "+R2.change+"\n";
     }
