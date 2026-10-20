@@ -213,10 +213,10 @@ function weekdayParts(w,court){
       (w===5&&!court)?{id:"pad",label:"Rahim's Tomb site visit",time:"4:00–5:15 · 9 min each way",o:["Site visit","No visit this week","Meditation 2"],ph:"Visit ID, zones, photo IDs, 3 open questions…"}
                      :{id:"med2",label:"Meditation 2 (7 min)",time:"4:00–4:07"},
       (w===5&&!court)?{id:"med2",label:"Meditation 2 (7 min)",time:"5:15, back from the visit"}
-                     :{id:"open",label:"Open block — billable work by default",time:"4:07–5:15",ph:"Matter / what moved…"}]),
+                     :{id:"open",label:"Open block",time:"4:07–5:10",o:["BD","Exercise","Recharge","Xtra work"],ph:"What I used it for…"}]),
     P("E","Evening",[
-      court?null:{id:"deep",label:deep,time:"5:15–6:45"},
-      {id:"dinner",label:"Dinner at office",time:"6:45–7:15"},
+      court?null:{id:"deep",label:deep,time:"5:15–7:15 · dinner break 6:30–6:45"},
+      {id:"dinner",label:"Dinner at office",time:"6:30–6:45"},
       {id:"shut",label:"Tomorrow's to-dos + shutdown",time:"7:15–7:30"},
       {id:"bill",label:"Billing numbers",time:"today's hours",num:[["my","My billable hrs"],["team","Team billable hrs"]]}]),
     P("F","Night",[
@@ -274,7 +274,7 @@ function itemsFor(date){return tpl(date).items;}
 function findItem(date,id){return tpl(date).map[id]||null;}
 
 /* catalogue of every new item (for Log › By session) */
-var GEN={rtomb:"Rahim's Tomb research",pad:"Friday site visit",lunch:"Walking pad after lunch",open:"Open block (4:00–5:15)",wake:"Wake + snack",train:"Morning training",msess:"Morning session (tennis / walk / physio)",avyaan:"Avyaan time",
+var GEN={rtomb:"Rahim's Tomb research",pad:"Friday site visit",lunch:"Walking pad after lunch",open:"Open block (4:07–5:10)",wake:"Wake + snack",train:"Morning training",msess:"Morning session (tennis / walk / physio)",avyaan:"Avyaan time",
   deep:"Evening deep work",pad:"Walking pad block",lights:"Lights out",cb1:"Counsel block 1",cb2:"Counsel block 2"};
 var CAT=[],CATMAP={};
 (function(){
